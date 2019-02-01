@@ -319,15 +319,16 @@ void CostmapInterface::ResetLayers() {
   }
 }
 
-bool CostmapInterface::GetRobotPose(tf::Stamped<tf::Pose> &global_pose) const {
-  global_pose.setIdentity();
-  tf::Stamped<tf::Pose> robot_pose;
-  robot_pose.setIdentity();
-  robot_pose.frame_id_ = robot_base_frame_;
+bool CostmapInterface::GetRobotPose(tf::Stamped<tf::Pose> &global_pose) const { //传入的是当前在全局地图的位置
+  global_pose.setIdentity(); //大概是获取在这一个位置应该处于的pose？
+  tf::Stamped<tf::Pose> robot_pose; //声明当前的机器人的pose对象？
+  robot_pose.setIdentity(); //获取当前实际的机器人的pose？
+  robot_pose.frame_id_ = robot_base_frame_; //打一个标记？
   robot_pose.stamp_ = ros::Time();
-  ros::Time current_time = ros::Time::now();
+  ros::Time current_time = ros::Time::now();  //打一个时间戳
   try {
-    tf_.transformPose(global_frame_, robot_pose, global_pose);
+    tf_.transformPose(global_frame_, robot_pose, global_pose);                  //PS：try & catch组合用于捕捉系统中抛出的异常 并进行适当的处理 比如更易于理解的错误信息或是对程序进行某种操作
+    //上面是将robot_pose 转化为 全局帧下的个global_pose 如果转换出错 则会触发catch
   }
   catch (tf::LookupException &ex) {
     ROS_ERROR("No Transform Error looking up robot pose: %s", ex.what());

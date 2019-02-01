@@ -169,14 +169,20 @@ class GlobalPlannerNode {
   //! Thread for global planning progress
   std::thread plan_thread_;
   //! Planning condition variable
-  std::condition_variable plan_condition_;
+  std::condition_variable plan_condition_;    //这里是声明一个条件变量对象 一般而言是当
+                                              //当 std::condition_variable 对象的某个 wait 函数被调用的时候，它使用 std::unique_lock(通过 std::mutex) 来锁住当前线程。当前线程会一直被阻塞，直到另外一个线程在相同的 std::condition_variable 对象上调用了 notification 函数来唤醒当前线程。
   //! Planning mutex
-  std::mutex plan_mutex_;
-
+  std::mutex plan_mutex_; //这里是声明路径计划锁为一个普通的互斥对象
+                          //锁是用来同步多个线程对互斥对象的共享资源的访问
+                          //互斥对象主要操作为 1.上锁lock 2.解锁unlock
+                          //对于简单互斥对象而言，当一个线程对互斥对象进行
+                          //lock操作并成功获得这个互斥对象的所有权，在此线程对此对象unlock前，
+                          //其他线程对这个互斥对象的lock操作都会被阻塞。
+                          //锁机制保证了同一时间只有一个线程对对象进行操作
   //! Global planner node state
   roborts_common::NodeState node_state_;
   //! Global planner node state mutex
-  std::mutex node_state_mtx_;
+  std::mutex node_state_mtx_;   //这里又是一个互斥对象用来代表节点状态 mtx大概是互斥锁的意思吧
   //! Global planner error infomation
   roborts_common::ErrorInfo error_info_;
   //! Global planner error infomation mutex

@@ -215,7 +215,7 @@ void GlobalPlannerNode::StopPlanning() {
 
 void GlobalPlannerNode::PlanThread() {  //在单独的线程中进行路径规划
   ROS_INFO("Plan thread start!"); //终端消息
-  geometry_msgs::PoseStamped current_start;   //这里是某一种消息的类型 实际上就是点（参考ros-wiki）
+  geometry_msgs::PoseStamped current_start;   //这里是某一种消息的类型 实际上就是点（参考ros-wiki） point-stamped：点-邮戳所以是用来标记点的数据类型
   geometry_msgs::PoseStamped current_goal;  //这里分别声明起点和终点的实例化对象
   std::vector<geometry_msgs::PoseStamped> current_path;   //用点集来表示路径
   std::chrono::microseconds sleep_time = std::chrono::microseconds(0);  //应该是设置的线程休眠时间 这里采用的是标准的秒。。。
@@ -223,20 +223,24 @@ void GlobalPlannerNode::PlanThread() {  //在单独的线程中进行路径规�
   int retries = 0;  //未知 重试？ 大概是标记重复次数
   while (ros::ok()) {   //这里的ros：：ok函数其实是对于内核信号的一个监听 如果没有收到中断信号则一直保持ture
     ROS_INFO("Wait to plan!");  //终端消息
-    std::unique_lock<std::mutex> plan_lock(plan_mutex_);    
-    plan_condition_.wait_for(plan_lock, sleep_time);
-    while (GetNodeState()!=NodeState::RUNNING){
+    std::unique_lock<std::mutex> plan_lock(plan_mutex_);  //声明一个锁的模板管理 plan_lock对象以独占的方式对planmutex进行上所和解锁 在这个模板类的生命周期内原来的对象将会一直保持上锁的状态 当模板对象消亡的时候就会进行解锁
+    //简单来说 该线程独占plan_mutex_对象 所以暂时还不清楚这个对象是干啥用的 这些对象的成员和构造函数应该是给我们自己去写的。。。
+    plan_condition_.wait_for(plan_lock, sleep_time);  //这里是一个条件变量对象 当该对象的一个wait函数被调用 就会对其控制的进程进行阻塞直到另外一个线程在相同的 std::condition_variable 对象上调用了 notification 函数来唤醒当前线程。
+                                                      //对于这里的wait_for函数而言其实就是阻塞这个进程sleep_time的时长
+    while (GetNodeState()!=NodeState::RUNNING){ //从一个互斥锁的对象那里获取某个节点的状态 如果是运行的 就让该线程休眠 循环读取相当于在等某一个线程运行完
+                                                
       std::this_thread::sleep_for(std::chrono::microseconds(1));
     }
-    ROS_INFO("Go on planning!");
+    ROS_INFO("Go on planning!");  //上面这里可以理解为 先等一下看看别的进程是否运行完了如果运行完了就继续往下走
 
-    std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();  //计时函数的起点时间
 
     {
-      std::unique_lock<roborts_costmap::Costmap2D::mutex_t> lock(*(costmap_ptr_->GetCostMap()->GetMutex()));
-      bool error_set = false;
+      std::unique_lock<roborts_costmap::Costmap2D::mutex_t> lock(*(costmap_ptr_->GetCostMap()->GetMutex()));  //这里是声明一个超时互斥锁的独占锁 对象 并且初始化为这个指针所指向的对象即当前线程独占这个对象  但是如果被其他线程占用超时后不会继续等待。。。 也不知道指向了哪里。。。
+      bool error_set = false;   //姿态标志位
       //Get the robot current pose
-      while (!costmap_ptr_->GetRobotPose(current_start)) {
+      //估计是指向建好的图的指针costmap_ptr_
+      while (!costmap_ptr_->GetRobotPose(current_start)) {  //如果成功获取当前的全局位置则进入循环
         if (!error_set) {
           ROS_ERROR("Get Robot Pose Error.");
           SetErrorInfo(ErrorInfo(ErrorCode::GP_GET_POSE_ERROR, "Get Robot Pose Error."));
