@@ -237,7 +237,7 @@ void GlobalPlannerNode::PlanThread() {  //在单独的线程中进行路径规�
 
     {
       std::unique_lock<roborts_costmap::Costmap2D::mutex_t> lock(*(costmap_ptr_->GetCostMap()->GetMutex()));  //这里是声明一个超时互斥锁的独占锁 对象 并且初始化为这个指针所指向的对象即当前线程独占这个对象  但是如果被其他线程占用超时后不会继续等待。。。 也不知道指向了哪里。。。
-      bool error_set = false;   //姿态标志位
+      bool error_set = false;   //姿态标志位 
       //Get the robot current pose
       //估计是指向建好的图的指针costmap_ptr_
       while (!costmap_ptr_->GetRobotPose(current_start)) {  //如果成功获取当前的全局位置则进入循环
