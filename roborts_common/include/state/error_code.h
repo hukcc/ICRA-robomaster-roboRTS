@@ -113,7 +113,7 @@ class ErrorInfo {
     return error_code_==rhs.error_code();
   }
 
-  bool IsOK() const{
+  bool IsOK() const{      //可以被用作多个类的成员函数？
     return (error_code_ == ErrorCode::OK);
   }
 

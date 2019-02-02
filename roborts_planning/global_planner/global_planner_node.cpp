@@ -34,7 +34,7 @@ GlobalPlannerNode::GlobalPlannerNode() :  //这里不是类的派生！！！！
     //error_info_:存储错误信息？ 或者是判断是否错误的flag
     //as_:ros 中对应的AC（运动）模块对于运动的控制。
 
-  if (Init().IsOK()) {  //检查error_code是否为OK 如果是则开始路径规划
+  if (Init().IsOK()) {  // init还没看 这里应该是判断是否初始化完成？  对 这里的IsOK是检查Init的返回值 相当于 ErrorInfo.IsOK()
     ROS_INFO("Global planner initialization completed.");//记录初始化完成
     StartPlanning();  //这一步是对路径进行规划
     as_.start();  //对上面得到的路径去做实际的动作
@@ -191,8 +191,8 @@ void GlobalPlannerNode::SetErrorInfo(ErrorInfo error_info) {
   error_info_ = error_info;
 }
 
-geometry_msgs::PoseStamped GlobalPlannerNode::GetGoal() {
-  std::lock_guard<std::mutex> goal_lock(goal_mtx_);
+geometry_msgs::PoseStamped GlobalPlannerNode::GetGoal() { //这里由于是多线程协作 因此互斥机制就非常重要了
+  std::lock_guard<std::mutex> goal_lock(goal_mtx_);   //上锁 获取这个对象然后返回目标点 lock_guard其实只是将上锁和解锁和为一体 并没有其他特殊功能
   return goal_;
 }
 
@@ -235,32 +235,33 @@ void GlobalPlannerNode::PlanThread() {  //在单独的线程中进行路径规�
 
     std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();  //计时函数的起点时间
 
-    {
-      std::unique_lock<roborts_costmap::Costmap2D::mutex_t> lock(*(costmap_ptr_->GetCostMap()->GetMutex()));  //这里是声明一个超时互斥锁的独占锁 对象 并且初始化为这个指针所指向的对象即当前线程独占这个对象  但是如果被其他线程占用超时后不会继续等待。。。 也不知道指向了哪里。。。
-      bool error_set = false;   //姿态标志位 
+    {                                                               //这是costmapinterface的一个智能指针的对象
+      std::unique_lock<roborts_costmap::Costmap2D::mutex_t> lock(*(costmap_ptr_->GetCostMap()->GetMutex()));  //这里是锁了一个 路径？ 占用这个变量拿来规划？
+                                                                                                              //获取代价地图
+      bool error_set = false;   //位置标志位 
       //Get the robot current pose
       //估计是指向建好的图的指针costmap_ptr_
-      while (!costmap_ptr_->GetRobotPose(current_start)) {  //如果成功获取当前的全局位置则进入循环
+      while (!costmap_ptr_->GetRobotPose(current_start)) {  //如果没有获取当前的全局位置则进入循环 如果成功就把这个位置作为开始位置
         if (!error_set) {
           ROS_ERROR("Get Robot Pose Error.");
-          SetErrorInfo(ErrorInfo(ErrorCode::GP_GET_POSE_ERROR, "Get Robot Pose Error."));
+          SetErrorInfo(ErrorInfo(ErrorCode::GP_GET_POSE_ERROR, "Get Robot Pose Error."));     //如果当前循环中获取姿态错误则将标志为标记为错误
           error_set = true;
         }
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
+        std::this_thread::sleep_for(std::chrono::microseconds(1));    //循环休眠1s 
       }
 
       //Get the robot current goal and transform to the global frame
-      current_goal = GetGoal();
+      current_goal = GetGoal();     //估计是从别的线程处获取全局目标位置 把goal互斥对象放进lock_guard然后返回goal
 
-      if (current_goal.header.frame_id != costmap_ptr_->GetGlobalFrameID()) {
-        current_goal = costmap_ptr_->Pose2GlobalFrame(current_goal);
-        SetGoal(current_goal);
+      if (current_goal.header.frame_id != costmap_ptr_->GetGlobalFrameID()) {   //如果目标点的位置和全局地图中的不同？
+        current_goal = costmap_ptr_->Pose2GlobalFrame(current_goal);    //貌似只是为了发布信息？
+        SetGoal(current_goal);  //应该是用来同步目标位置和它在地图上的标记？
       }
 
       //Plan
-      error_info = global_planner_ptr_->Plan(current_start, current_goal, current_path);
+      error_info = global_planner_ptr_->Plan(current_start, current_goal, current_path);    //调用路径规划算法
 
-    }
+    } //这一块就是global_planner的主要内容
 
     if (error_info.IsOK()) {
       //When planner succeed, reset the retry times

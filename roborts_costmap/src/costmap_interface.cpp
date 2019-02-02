@@ -319,16 +319,16 @@ void CostmapInterface::ResetLayers() {
   }
 }
 
-bool CostmapInterface::GetRobotPose(tf::Stamped<tf::Pose> &global_pose) const { //传入的是当前在全局地图的位置
-  global_pose.setIdentity(); //大概是获取在这一个位置应该处于的pose？
-  tf::Stamped<tf::Pose> robot_pose; //声明当前的机器人的pose对象？
-  robot_pose.setIdentity(); //获取当前实际的机器人的pose？
-  robot_pose.frame_id_ = robot_base_frame_; //打一个标记？
-  robot_pose.stamp_ = ros::Time();
+bool CostmapInterface::GetRobotPose(tf::Stamped<tf::Pose> &global_pose) const { 
+  global_pose.setIdentity(); //初始化？
+  tf::Stamped<tf::Pose> robot_pose; //机器人由tf查询姿态转换过来的位置
+  robot_pose.setIdentity(); //
+  robot_pose.frame_id_ = robot_base_frame_; //空间标记
+  robot_pose.stamp_ = ros::Time();  //时间标记？
   ros::Time current_time = ros::Time::now();  //打一个时间戳
   try {
     tf_.transformPose(global_frame_, robot_pose, global_pose);                  //PS：try & catch组合用于捕捉系统中抛出的异常 并进行适当的处理 比如更易于理解的错误信息或是对程序进行某种操作
-    //上面是将robot_pose 转化为 全局帧下的个global_pose 如果转换出错 则会触发catch
+    //上面是将robot_pose 转化为 全局地图下的个global_pose 如果转换出错 则会触发catch
   }
   catch (tf::LookupException &ex) {
     ROS_ERROR("No Transform Error looking up robot pose: %s", ex.what());
@@ -352,9 +352,9 @@ bool CostmapInterface::GetRobotPose(tf::Stamped<tf::Pose> &global_pose) const { 
 }
 
 bool CostmapInterface::GetRobotPose(geometry_msgs::PoseStamped &global_pose) const {
-  tf::Stamped<tf::Pose> tf_global_pose;
-  if (GetRobotPose(tf_global_pose)) {
-    tf::poseStampedTFToMsg(tf_global_pose, global_pose);
+  tf::Stamped<tf::Pose> tf_global_pose; //转换全局位置
+  if (GetRobotPose(tf_global_pose)) { //如果从tf那里查询转换成功 得到了全局地图的位置
+    tf::poseStampedTFToMsg(tf_global_pose, global_pose);  //估计是转换成消息发送出去 （将这个全局地图中的位置信息） 并将tfgp赋值给gp
     return true;
   } else {
     return false;
@@ -407,17 +407,17 @@ bool CostmapInterface::GetRobotPose(RobotPose &pose) {
 
 geometry_msgs::PoseStamped CostmapInterface::Pose2GlobalFrame(const geometry_msgs::PoseStamped &pose_msg) {
   tf::Stamped<tf::Pose> tf_pose, global_tf_pose;
-  poseStampedMsgToTF(pose_msg, tf_pose);
+  poseStampedMsgToTF(pose_msg, tf_pose);    //先把传入的全局位置信息转化为tf形式
 
   tf_pose.stamp_ = ros::Time();
   try {
-    tf_.transformPose(global_frame_, tf_pose, global_tf_pose);
+    tf_.transformPose(global_frame_, tf_pose, global_tf_pose);    //尝试将tf_pose转化到全局地图下保存为gtfp
   }
-  catch (tf::TransformException &ex) {
+  catch (tf::TransformException &ex) {    //如果失败就返回原来的输入值（也是全局地图上的一个点）
     return pose_msg;
   }
   geometry_msgs::PoseStamped global_pose_msg;
-  tf::poseStampedTFToMsg(global_tf_pose, global_pose_msg);
+  tf::poseStampedTFToMsg(global_tf_pose, global_pose_msg);    //如果转换成功就再变换回正确全局格式 发布消息 并返回
   return global_pose_msg;
 }
 
