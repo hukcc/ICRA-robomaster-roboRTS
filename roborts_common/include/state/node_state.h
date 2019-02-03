@@ -20,7 +20,7 @@
 namespace roborts_common{
 
 enum NodeState{
-  IDLE,
+  IDLE,     //空闲
   RUNNING,
   PAUSE,
   SUCCESS,

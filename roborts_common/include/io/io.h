@@ -37,28 +37,28 @@
 namespace roborts_common{
 const int kProtoReadBytesLimit = INT_MAX;  // Max size of 2 GB minus 1 byte.
 
-template<class T>
-inline bool ReadProtoFromTextFile(const char *file_name, T *proto) {
+template<class T>   //用函数模板避免了函数重载的工作量
+inline bool ReadProtoFromTextFile(const char *file_name, T *proto) {    //用内联函数减少调用消耗的跳转时间 明显是经常调用的函数
   using google::protobuf::io::FileInputStream;
   using google::protobuf::io::FileOutputStream;
   using google::protobuf::io::ZeroCopyInputStream;
   using google::protobuf::io::CodedInputStream;
   using google::protobuf::io::ZeroCopyOutputStream;
   using google::protobuf::io::CodedOutputStream;
-  using google::protobuf::Message;
+  using google::protobuf::Message;                          //用了一堆google的命名空间？ 用来进行交互
 
-  std::string full_path = /*ros::package::getPath("roborts") +*/ std::string(file_name);
-  ROS_INFO("Load prototxt: %s", full_path.c_str());
+  std::string full_path = /*ros::package::getPath("roborts") +*/ std::string(file_name);    //将传入的路径另存
+  ROS_INFO("Load prototxt: %s", full_path.c_str());   //终端提示
 
-  int fd = open(full_path.c_str(), O_RDONLY);
+  int fd = open(full_path.c_str(), O_RDONLY); //以只读的方式打开文件
   if (fd == -1) {
-    ROS_ERROR("File not found: %s", full_path.c_str());
+    ROS_ERROR("File not found: %s", full_path.c_str());   //打开失败 报错跳出
     return false;
   }
-  FileInputStream *input = new FileInputStream(fd);
-  bool success = google::protobuf::TextFormat::Parse(input, proto);
-  delete input;
-  close(fd);
+  FileInputStream *input = new FileInputStream(fd);     //创造输入流
+  bool success = google::protobuf::TextFormat::Parse(input, proto);  //将文件内容赋值给proto 同时返回成功与否的指示变量
+  delete input;   //删除变量
+  close(fd);  //关闭文件 方便别的程序调用
   return success;
 }
 

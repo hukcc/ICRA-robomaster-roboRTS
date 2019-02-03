@@ -38,10 +38,11 @@ template<class AlgorithmBase, typename... Args>
 class AlgorithmFactory
 {
  public:
-  using AlgorithmHash = std::unordered_map<std::string, std::function<std::unique_ptr<AlgorithmBase>(Args...)>>;
+  using AlgorithmHash = std::unordered_map<std::string, std::function<std::unique_ptr<AlgorithmBase>(Args...)>>;    //这里unordered_map对应哈希表
+                                                                                                                    //如果是map则对应红黑树
 
   /**
-   * @brief The only way to get AlgorithmHash.
+   * @brief The only way to get AlgorithmHash.  获取算法的唯一方法。。。。
    * @return Ref of AlgorithmHash
    */
   static AlgorithmHash& GetAlgorithmHash(){
@@ -95,18 +96,18 @@ class AlgorithmFactory
    * @param args Parameter pack
    * @return The base class unique_ptr that point to Algorithm corresponding to the algorithm name.
    */
-  static std::unique_ptr<AlgorithmBase> CreateAlgorithm(const std::string algorithm_name,
+  static std::unique_ptr<AlgorithmBase> CreateAlgorithm(const std::string algorithm_name,   //输入需要调用的算法的名称 以及指向参数的文件的指针
                                                         Args... args) {
-    AlgorithmHash& algorithm_hash = GetAlgorithmHash();
+    AlgorithmHash& algorithm_hash = GetAlgorithmHash();     //生成一个哈希表的引用变量   用来获取算法的哈希表
 
-    auto factory_iter = algorithm_hash.find(algorithm_name);
-    if(factory_iter == algorithm_hash.end()){
+    auto factory_iter = algorithm_hash.find(algorithm_name);    //auto变量可以储存任意类型  在哈系表中查找对应名字的函数
+    if(factory_iter == algorithm_hash.end()){                   //如果查到最后一个也不是正确的函数 就报错并返回一个空指针
       std::cout << "Can't creat algorithm " << algorithm_name <<
                ", because you haven't register it!" << std::endl;
       return nullptr;
     }
     else{
-      return (factory_iter->second)(std::forward<Args>(args)...);
+      return (factory_iter->second)(std::forward<Args>(args)...);   //否则就返回。。。。。 啥    先跳过吧 估计是返回对应的算法的指针
     }
   }
 
