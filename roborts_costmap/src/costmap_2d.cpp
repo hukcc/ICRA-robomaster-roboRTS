@@ -168,7 +168,7 @@ unsigned char *Costmap2D::GetCharMap() const {
   return costmap_;
 }
 
-unsigned char Costmap2D::GetCost(unsigned int mx, unsigned int my) const {
+unsigned char Costmap2D::GetCost(unsigned int mx, unsigned int my) const {    //返回到达目标点所需要的代价
   return costmap_[GetIndex(mx, my)];
 }
 
@@ -181,13 +181,13 @@ void Costmap2D::Map2World(unsigned int mx, unsigned int my, double &wx, double &
   wy = origin_y_ + (my + 0.5) * resolution_;
 }
 
-bool Costmap2D::World2Map(double wx, double wy, unsigned int &mx, unsigned int &my) const {
-  if (wx < origin_x_ || wy < origin_y_) {
+bool Costmap2D::World2Map(double wx, double wy, unsigned int &mx, unsigned int &my) const {     //w：world   m：map 所以wx就是world_x
+  if (wx < origin_x_ || wy < origin_y_) {   //如果这两个世界坐标有任何一个小于地图中的原点的话 直接退出
     return false;
   }
-  mx = (int) ((wx - origin_x_) / resolution_);
+  mx = (int) ((wx - origin_x_) / resolution_);    //如果符合条件就平移换算 然后缩放一下到map上
   my = (int) ((wy - origin_y_) / resolution_);
-  if (mx < size_x_ && my < size_y_) {
+  if (mx < size_x_ && my < size_y_) {             //换算完成在检查一下是否超出地图
     return true;
   }
   return false;

@@ -180,7 +180,7 @@ class Costmap2D {
    * @param my The y coordinate
    * @return The associated index
    */
-  inline unsigned int GetIndex(unsigned int mx, unsigned int my) const {
+  inline unsigned int GetIndex(unsigned int mx, unsigned int my) const {      //如果是从原点开始按照行优先顺序编号  这个函数正好可以返回序号
     return my * size_x_ + mx;
   }
 

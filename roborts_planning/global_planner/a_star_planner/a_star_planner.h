@@ -33,14 +33,14 @@ namespace roborts_global_planner{
 /**
  * @brief Global planner alogorithm class for A star under the representation of costmap
  */
-class AStarPlanner : public GlobalPlannerBase {
+class AStarPlanner : public GlobalPlannerBase {   //A*算法的类定义
 
  public:
   /**
    * @brief Constructor of A star planner, set the costmap pointer and relevant costmap size.
    * @param costmap_ptr The shared pointer of costmap interface
    */
-  AStarPlanner(CostmapPtr costmap_ptr);
+  AStarPlanner(CostmapPtr costmap_ptr);   //构造函数
   virtual ~AStarPlanner();
   /**
    * @brief Main Plan function(override the base-class function)
