@@ -124,7 +124,7 @@ class AStarPlanner : public GlobalPlannerBase {   //A*算法的类定义
   static std::vector<int> f_score_;
   //! search algorithm related g score, which refers to the score from start cell to current cell
   std::vector<int> g_score_;
-  //! vector that indicates the parent cell index of each cell
+  //! vector that indicates the parent cell index of each cell    指向每一个格子的父母结点？
   std::vector<int> parent_;
   //! vector that indicates the state of each cell
   std::vector<AStarPlanner::SearchState> state_;
