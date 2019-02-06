@@ -143,7 +143,7 @@ class GlobalPlannerNode {
   //! ROS Node Handler
   ros::NodeHandle nh_;
   //! ROS Publisher for path visualization in rviz
-  ros::Publisher path_pub_;
+  ros::Publisher path_pub_;   //用来发布可视化路径的消息
   //! ROS Actionlib Server for command global planning module
   GlobalPlannerServer as_;
   //! Global planner pointer

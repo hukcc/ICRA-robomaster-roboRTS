@@ -40,7 +40,7 @@ GlobalPlannerNode::GlobalPlannerNode() : //这里不是类的派生！！！！�
   {                                                       // 这里应该是判断是否初始化完成  对 这里的IsOK是检查Init的返回值 相当于 ErrorInfo.IsOK()
     ROS_INFO("Global planner initialization completed."); //记录初始化完成
     StartPlanning();                                      //这一步是对路径进行规划
-    as_.start();                                          //对上面得到的路径去做实际的动作
+    as_.start();                                          //对上面得到的路径去做实际的动作      跳转2。8好了
   }
   else
   { //否则报错并将节点当前的状态设置为failure。
@@ -246,7 +246,7 @@ void GlobalPlannerNode::PlanThread()
   std::vector<geometry_msgs::PoseStamped> current_path;                //用点集来表示路径
   std::chrono::microseconds sleep_time = std::chrono::microseconds(0); //应该是设置的线程休眠时间 这里采用的是标准的秒。。。
   ErrorInfo error_info;                                                //声明错误信息存储的实例化对象  内容默认是无错误
-  int retries = 0;                                                     //未知 重试？ 大概是标记重复次数
+  int retries = 0;                                                     //标记重复次数
   while (ros::ok())
   {                                                      //这里的ros：：ok函数其实是对于内核信号的一个监听 如果没有收到中断信号则一直保持ture
     ROS_INFO("Wait to plan!");                           //终端消息
@@ -290,35 +290,35 @@ void GlobalPlannerNode::PlanThread()
       }
 
       //Plan
-      error_info = global_planner_ptr_->Plan(current_start, current_goal, current_path); //调用路径规划算法 的规划函数   大头2.4吧
+      error_info = global_planner_ptr_->Plan(current_start, current_goal, current_path); //调用路径规划算法 的规划函数   上面的部分只是确定一组合适的起点和终点 放入到这个plan函数之后得到了规划好的路径 存放在current_path
 
     } //以上这一块就是global_planner的主要内容
 
     if (error_info.IsOK())    //如果成功规划了路径
     {
       //When planner succeed, reset the retry times
-      retries = 0;
-      PathVisualization(current_path);
+      retries = 0;    //规划成功重置尝试次数
+      PathVisualization(current_path);  //路径可视化？
 
       //Set the goal to avoid the same goal from getting transformed every time
       current_goal = current_path.back();
-      SetGoal(current_goal);
+      SetGoal(current_goal);                //将路径规划的终点设置为当前的终点（因为在规划的时候会有误差搜索所以终点有可能改变 如果这里不这么做就有可能再次触发规划）
 
-      //Decide whether robot reaches the goal according to tolerance
+      //Decide whether robot reaches the goal according to tolerance    //由误差决定是否要走过去 误差？
       if (GetDistance(current_start, current_goal) < goal_distance_tolerance_ && GetAngle(current_start, current_goal) < goal_angle_tolerance_)
       {
-        SetNodeState(NodeState::SUCCESS);
+        SetNodeState(NodeState::SUCCESS);       //如果距离和角度都在误差允许范围内 就标志规划成功
       }
     }
-    else if (max_retries_ > 0 && retries > max_retries_)
+    else if (max_retries_ > 0 && retries > max_retries_)        //如果超出了重试的上限
     {
       //When plan failed to max retries, return failure
-      ROS_ERROR("Can not get plan with max retries( %d )", max_retries_);
-      error_info = ErrorInfo(ErrorCode::GP_MAX_RETRIES_FAILURE, "Over max retries.");
-      SetNodeState(NodeState::FAILURE);
-      retries = 0;
+      ROS_ERROR("Can not get plan with max retries( %d )", max_retries_);       //终端显示尝试的次数
+      error_info = ErrorInfo(ErrorCode::GP_MAX_RETRIES_FAILURE, "Over max retries.");   //报错
+      SetNodeState(NodeState::FAILURE);     //将规划状态标记为失败
+      retries = 0;      //尝试次数清0
     }
-    else if (error_info == ErrorInfo(ErrorCode::GP_GOAL_INVALID_ERROR))     //无法到达的目标
+    else if (error_info == ErrorInfo(ErrorCode::GP_GOAL_INVALID_ERROR))     //无法到达的目标    错误的处理方式和上面差不多
     {
       //When goal is not reachable, return failure immediately
       ROS_ERROR("Current goal is not valid!");
@@ -329,18 +329,18 @@ void GlobalPlannerNode::PlanThread()
     {
       //Increase retries
       retries++;
-      ROS_ERROR("Can not get plan for once. %s", error_info.error_msg().c_str());
+      ROS_ERROR("Can not get plan for once. %s", error_info.error_msg().c_str());       //一次规划到达不了的点。。。 有点懵
     }
-    // Set and update the error info
+    // Set and update the error info    更新（错误）状态信息
     SetErrorInfo(error_info);
 
-    // Deal with the duration to wait
+    // Deal with the duration to wait       处理其他线程？
     std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
     std::chrono::microseconds execution_duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     sleep_time = cycle_duration_ - execution_duration;
 
-    // Report warning while planning timeout
+    // Report warning while planning timeout    如果这个线程超时就报错
     if (sleep_time <= std::chrono::microseconds(0))
     {
       ROS_ERROR("The time planning once is %ld beyond the expected time %ld",
@@ -356,13 +356,13 @@ void GlobalPlannerNode::PlanThread()
 
 void GlobalPlannerNode::PathVisualization(const std::vector<geometry_msgs::PoseStamped> &path)
 {
-  path_.poses = path;
-  path_pub_.publish(path_);
-  new_path_ = true;
+  path_.poses = path;   //？待查  ？  反正是把路径赋值给一个消息？
+  path_pub_.publish(path_); //发布路径消息  方便某个什么东西来把路径可视化
+  new_path_ = true;     //标志找到了新的路径
 }
 
 double GlobalPlannerNode::GetDistance(const geometry_msgs::PoseStamped &pose1,
-                                      const geometry_msgs::PoseStamped &pose2)
+                                      const geometry_msgs::PoseStamped &pose2)      //直接获取起点终点之间的直线距离
 {
   const geometry_msgs::Point point1 = pose1.pose.position;
   const geometry_msgs::Point point2 = pose2.pose.position;
@@ -372,7 +372,7 @@ double GlobalPlannerNode::GetDistance(const geometry_msgs::PoseStamped &pose1,
 }
 
 double GlobalPlannerNode::GetAngle(const geometry_msgs::PoseStamped &pose1,
-                                   const geometry_msgs::PoseStamped &pose2)
+                                   const geometry_msgs::PoseStamped &pose2)     //直接获取起点终点之间的角度 （用于判断误差搜索终点的时候变更的终点是否可以接受
 {
   const geometry_msgs::Quaternion quaternion1 = pose1.pose.orientation;
   const geometry_msgs::Quaternion quaternion2 = pose2.pose.orientation;

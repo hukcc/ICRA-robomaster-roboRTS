@@ -199,29 +199,29 @@ ErrorInfo AStarPlanner::SearchPath(const int &start_index,                      
 		return ErrorInfo(ErrorCode::GP_PATH_SEARCH_ERROR, "Valid global path not found.");
 	}
 
-	unsigned int iter_index = current_index, iter_x, iter_y;		//？？？？？？
+	unsigned int iter_index = current_index, iter_x, iter_y;		//哦woc 声明三个变量 初始化第一个为当前点的序号（进行到这里应该是终点了
 
-	geometry_msgs::PoseStamped iter_pos;
-	iter_pos.pose.orientation.w = 1;
-	iter_pos.header.frame_id = "map";
-	path.clear();
-	costmap_ptr_->GetCostMap()->Index2Cells(iter_index, iter_x, iter_y);
-	costmap_ptr_->GetCostMap()->Map2World(iter_x, iter_y, iter_pos.pose.position.x, iter_pos.pose.position.y);
-	path.push_back(iter_pos);
+	geometry_msgs::PoseStamped iter_pos;		//声明一个在3D空间的位置变量
+	iter_pos.pose.orientation.w = 1;			//？	的确需要一本手册之类的
+	iter_pos.header.frame_id = "map";			//？
+	path.clear();								//清空路径容器 ? 不知道他这边规划好的路径到哪里去了
+	costmap_ptr_->GetCostMap()->Index2Cells(iter_index, iter_x, iter_y);	//将当前位置序号转化成坐标（在这里是终点位置了
+	costmap_ptr_->GetCostMap()->Map2World(iter_x, iter_y, iter_pos.pose.position.x, iter_pos.pose.position.y);	//将坐标转化为实际坐标
+	path.push_back(iter_pos);	//将实际的坐标放入Path中
 
 	while (iter_index != start_index) {
-		iter_index = parent_.at(iter_index);
+		iter_index = parent_.at(iter_index);		//开始向前回溯（从终点回溯到起点
 //    if(cost_[iter_index]>= inaccessible_cost_){
 //      LOG_INFO<<"Cost changes through planning for"<< static_cast<unsigned int>(cost_[iter_index]);
 //    }
 		costmap_ptr_->GetCostMap()->Index2Cells(iter_index, iter_x, iter_y);
 		costmap_ptr_->GetCostMap()->Map2World(iter_x, iter_y, iter_pos.pose.position.x, iter_pos.pose.position.y);
-		path.push_back(iter_pos);
+		path.push_back(iter_pos);		//转换一下然后把他的父位置也放进Path中
 	}
 
-	std::reverse(path.begin(),path.end());
+	std::reverse(path.begin(),path.end());		//容器逆序	将里面所有的元素倒置 变成了从起点开始到达终点的容器
 
-	return ErrorInfo(ErrorCode::OK);
+	return ErrorInfo(ErrorCode::OK);	//返回标记成功
 
 }
 
