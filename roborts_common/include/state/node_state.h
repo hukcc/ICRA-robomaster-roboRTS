@@ -21,10 +21,10 @@ namespace roborts_common{
 
 enum NodeState{
   IDLE,     //空闲
-  RUNNING,
-  PAUSE,
-  SUCCESS,
-  FAILURE
+  RUNNING,  //运行中
+  PAUSE,    //暂停
+  SUCCESS,  //完成？ 成功
+  FAILURE   //失败
 };
 } //namespace roborts_common
 

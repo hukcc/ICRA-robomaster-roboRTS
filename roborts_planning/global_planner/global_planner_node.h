@@ -48,7 +48,9 @@ class GlobalPlannerNode {
   typedef std::shared_ptr<roborts_costmap::CostmapInterface> CostmapPtr;  //应该指向的是建好的图 这里是用于访问地图的api
   typedef std::shared_ptr<tf::TransformListener> TfPtr;// 这个指针应该是用于监听自身状态是否发生了变化 比如要转换模式一类的 //前两个是智能指针中的一种 可以多个指针指向同一个对象 避免了auto指针的弊端（只能独占一格对象）。
   typedef std::unique_ptr<GlobalPlannerBase> GlobalPlannerPtr;  //同样是智能指针 不同之处在于其是独占他所指向的对象
-  typedef actionlib::SimpleActionServer<roborts_msgs::GlobalPlannerAction> GlobalPlannerServer; //这是一个ros的控制动作的库
+  typedef actionlib::SimpleActionServer<roborts_msgs::GlobalPlannerAction> GlobalPlannerServer; //控制动作
+  //                简单动作服务端           经由gpa节点发出的消息来作出动作
+
  /**
   * @brief Constructor including all initialization and configuration
   */
@@ -145,7 +147,7 @@ class GlobalPlannerNode {
   //! ROS Publisher for path visualization in rviz
   ros::Publisher path_pub_;   //用来发布可视化路径的消息
   //! ROS Actionlib Server for command global planning module
-  GlobalPlannerServer as_;
+  GlobalPlannerServer as_;  //调用服务端执行操作？
   //! Global planner pointer
   GlobalPlannerPtr global_planner_ptr_;
   //！ Transform pointer

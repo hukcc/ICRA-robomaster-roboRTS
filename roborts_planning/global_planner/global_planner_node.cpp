@@ -25,22 +25,22 @@ namespace roborts_global_planner
 using roborts_common::ErrorCode;
 using roborts_common::ErrorInfo;
 using roborts_common::NodeState;
-GlobalPlannerNode::GlobalPlannerNode() : //这里不是类的派生！！！！如果是那必须是要写类型名的 这边冒号后面的是对于对象的成员变量赋值！！！
+GlobalPlannerNode::GlobalPlannerNode() : //这里不是类的派生！！！！如果是那必须是要写类型名的 这边冒号后面的是对于对象的成员变量初始化 就相当于同时间声明了变量！！！
                                          new_path_(false), pause_(false), node_state_(NodeState::IDLE), error_info_(ErrorCode::OK),
                                          as_(nh_, "global_planner_node_action", boost::bind(&GlobalPlannerNode::GoalCallback, this, _1), false)
-{
+{                                     //ps：这一步创建了服务器nh_是node-handle句柄（可以理解为一种智能指针） 2：命名这个服务器 3：选用某种规则（这边应该是使用回调函数）。。。boost什么的共享指针通过将消息附加到目标消息末尾？
   //这一系列被初始化的变量分别是
   //new_path_:一个标志位，判断是否出现了新的计划路径
   //pause_:判断是否是global生成的合适路径 如果是就暂停路径规划？
   //node_state_:全局路径规划节点自身的状态
   //error_info_:存储错误信息？ 或者是判断是否错误的flag
-  //as_:ros 中对应的AC（运动）模块对于运动的控制。
+  //as_:ros中actionlib的简单运动模块服务端。。  所以要搞清楚到底发生了什么就需要明白as_对象到底被初始化成什么鬼了
 
   if (Init().IsOK())
   {                                                       // 这里应该是判断是否初始化完成  对 这里的IsOK是检查Init的返回值 相当于 ErrorInfo.IsOK()
     ROS_INFO("Global planner initialization completed."); //记录初始化完成
     StartPlanning();                                      //这一步是对路径进行规划
-    as_.start();                                          //对上面得到的路径去做实际的动作      跳转2。8好了
+    as_.start();                                          //对上面得到的路径去做实际的动作      
   }
   else
   { //否则报错并将节点当前的状态设置为failure。
@@ -98,45 +98,45 @@ ErrorInfo GlobalPlannerNode::Init()
   return ErrorInfo(ErrorCode::OK);    //标记初始化完成
 }
 
-void GlobalPlannerNode::GoalCallback(const roborts_msgs::GlobalPlannerGoal::ConstPtr &msg)
+void GlobalPlannerNode::GoalCallback(const roborts_msgs::GlobalPlannerGoal::ConstPtr &msg)    //as_.start()调用 跳转到这个函数
 {
 
-  ROS_INFO("Received a Goal from client!");
+  ROS_INFO("Received a Goal from client!");   //从客户端接收到目标位置
 
   //Update current error and info
-  ErrorInfo error_info = GetErrorInfo();
-  NodeState node_state = GetNodeState();
+  ErrorInfo error_info = GetErrorInfo();    //上锁 更新值
+  NodeState node_state = GetNodeState();    //节点信息  同上
 
   //Set the current goal
-  SetGoal(msg->goal);
+  SetGoal(msg->goal);     //也是更新值  操作基本同上  这里msg是gpn发出来的消息  将里面的目标更新为当前的目标
 
   //If the last state is not running, set it to running
   if (GetNodeState() != NodeState::RUNNING)
   {
-    SetNodeState(NodeState::RUNNING);
+    SetNodeState(NodeState::RUNNING);       //如果节点的状态标识标志为没在移动则改为正在移动
   }
 
-  //Notify the condition variable to stop lock waiting the fixed duration
+  //Notify the condition variable to stop lock waiting the fixed duration 通知条件变量让线程暂停一段时间
   {
-    std::unique_lock<std::mutex> plan_lock(plan_mutex_);
-    plan_condition_.notify_one();
+    std::unique_lock<std::mutex> plan_lock(plan_mutex_);   //再一次锁上 用来规划的对象
+    plan_condition_.notify_one();         //简单来说应该是让规划路径的线程暂停 否则在走到一半的时候又会被重新规划               
   }
 
-  while (ros::ok())
+  while (ros::ok())   //相当于while（1）    //这里往后才是一直循环的节点的主线程所以需要一直检测和更新
   {
     // Preempted and Canceled
-    if (as_.isPreemptRequested())
+    if (as_.isPreemptRequested())   //如果客户端申请取消？      这段大概就是允许执行目标申请取消操作？
     {
-      if (as_.isNewGoalAvailable())
+      if (as_.isNewGoalAvailable()) //并且新的目标点是可以到达的
       {
-        as_.setPreempted();
-        ROS_INFO("Override!");
+        as_.setPreempted();   //将活动目标设置为抢占？  相当于覆盖上一次的结果？ ps：这里是这个节点的主线程 同时规划是这个节点的另外一个线程
+        ROS_INFO("Override!");    //覆盖！
         break;
       }
       else
       {
-        as_.setPreempted();
-        SetNodeState(NodeState::IDLE);
+        as_.setPreempted(); //？？
+        SetNodeState(NodeState::IDLE);    //如果目标点不可到达就需要多一个状态的改变
         ROS_INFO("Cancel!");
         break;
       }
@@ -144,30 +144,30 @@ void GlobalPlannerNode::GoalCallback(const roborts_msgs::GlobalPlannerGoal::Cons
 
     // Update the current state and error info
     node_state = GetNodeState();
-    error_info = GetErrorInfo();
-    //TODO: seem useless to check state here, as it would never be IDLE state
-    if (node_state == NodeState::RUNNING || node_state == NodeState::SUCCESS || node_state == NodeState::FAILURE)
+    error_info = GetErrorInfo();    //如果没有被客户端申请取消就更新状态
+    //TODO: seem useless to check state here, as it would never be IDLE state 。。。。。那你还写啥
+    if (node_state == NodeState::RUNNING || node_state == NodeState::SUCCESS || node_state == NodeState::FAILURE) //只要当前节点不在空闲状态下
     {
       roborts_msgs::GlobalPlannerFeedback feedback;
-      roborts_msgs::GlobalPlannerResult result;
+      roborts_msgs::GlobalPlannerResult result;     //声明两个？
       // If error occurs or planner produce new path, publish the feedback
-      if (!error_info.IsOK() || new_path_)
+      if (!error_info.IsOK() || new_path_)    //如果规划线程报错或者出现新的路径
       {
-        if (!error_info.IsOK())
+        if (!error_info.IsOK())   //如果是有报错的话  就记录报错内容然后再设定为正常？
         {
           feedback.error_code = error_info.error_code();
           feedback.error_msg = error_info.error_msg();
           SetErrorInfo(ErrorInfo::OK());
         }
-        if (new_path_)
+        if (new_path_)    //如果有新路经的话  设置为有新路经
         {
           feedback.path = path_;
           new_path_ = false;
         }
-        as_.publishFeedback(feedback);
+        as_.publishFeedback(feedback);  //然后把这个回馈返回回去（不管是否出错或者是否有新路径  二选一）
       }
 
-      // After get the result, deal with actionlib server and jump out of the loop
+      // After get the result, deal with actionlib server and jump out of the loop  在获得了最终结果并且将结果发布后  处理后续
       if (node_state == NodeState::SUCCESS)
       {
         result.error_code = error_info.error_code();
@@ -183,13 +183,13 @@ void GlobalPlannerNode::GoalCallback(const roborts_msgs::GlobalPlannerGoal::Cons
         break;
       }
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(1));
+    std::this_thread::sleep_for(std::chrono::microseconds(1));    //主线程休眠时长
   }
 }
 
 NodeState GlobalPlannerNode::GetNodeState()
 {
-  std::lock_guard<std::mutex> node_state_lock(node_state_mtx_);
+  std::lock_guard<std::mutex> node_state_lock(node_state_mtx_);   //上锁 更新
   return node_state_;
 }
 
@@ -201,7 +201,7 @@ void GlobalPlannerNode::SetNodeState(NodeState node_state)
 
 ErrorInfo GlobalPlannerNode::GetErrorInfo()
 {
-  std::lock_guard<std::mutex> error_info_lock(error_info_mtx_);
+  std::lock_guard<std::mutex> error_info_lock(error_info_mtx_);     //同样是给对象上锁 然后获取当前值
   return error_info_;
 }
 
