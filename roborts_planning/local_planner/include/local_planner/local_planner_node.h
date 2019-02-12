@@ -70,9 +70,9 @@ class LocalPlannerNode {
 
   /**
    * @brief Actionlib callback function use to control loop function
-   * @param command Command to control loop function
+   * @param command Command to control loop function      
    */
-  void ExcuteCB(const roborts_msgs::LocalPlannerGoal::ConstPtr &command);
+  void ExcuteCB(const roborts_msgs::LocalPlannerGoal::ConstPtr &command);   //这边的command还没看懂到底他的类定义在哪里。。。
 
   /**
    * @brief local planner algorithm's error callback function
@@ -142,7 +142,7 @@ class LocalPlannerNode {
   bool initialized_;
 
   //! local planner algorithm which choose to run
-  std::string selected_algorithm_;
+  std::string selected_algorithm_;    //选择哪一种局部路径规划算法
 
   //geometry_msgs::Twist cmd_vel_;
   //! robot control velocity with accelerate
@@ -162,7 +162,7 @@ class LocalPlannerNode {
   //! local planner mutex
   std::mutex plan_mutex_;
   //! control frequency
-  double frequency_;
+  double frequency_;    //控制频率？
 
 };
 

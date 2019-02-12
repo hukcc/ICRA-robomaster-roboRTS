@@ -235,15 +235,15 @@ bool TebLocalPlanner::IsGoalReached () {
 
 }
 
-bool TebLocalPlanner::SetPlan(const nav_msgs::Path& plan, const geometry_msgs::PoseStamped& goal) {
-  if (plan_mutex_.try_lock()) {
-    ROS_INFO("set plan");
-    if (plan.poses.empty()) {
-      temp_plan_.poses.push_back(goal);
+bool TebLocalPlanner::SetPlan(const nav_msgs::Path& plan, const geometry_msgs::PoseStamped& goal) {   //这边传入的应该是用来进行局部规划的计划 和 目标位置（这边用常引用不可更改！   
+  if (plan_mutex_.try_lock()) {   //同样是试一下看看是否该线程已经将对象上锁（应该是如果锁上了就不再锁了 如果没锁就锁上
+    ROS_INFO("set plan");         //终端消息
+    if (plan.poses.empty()) {     //如果 plan的位姿为空？ 就把目标点放进temp—plan里面
+      temp_plan_.poses.push_back(goal); //注意这里放进去的是临时计划位姿
     } else {
-      temp_plan_ = plan;
+      temp_plan_ = plan;          //如果传入的plan不为空的话就直接把他赋给临时变量
     }
-    plan_mutex_.unlock();
+    plan_mutex_.unlock();         //解锁 该线程释放对象
   }
 }
 
@@ -555,17 +555,17 @@ double TebLocalPlanner::ConvertTransRotVelToSteeringAngle(double v, double omega
 }
 
 roborts_common::ErrorInfo TebLocalPlanner::Initialize (std::shared_ptr<roborts_costmap::CostmapInterface> local_cost,
-                                  std::shared_ptr<tf::TransformListener> tf, LocalVisualizationPtr visual) {
+                                  std::shared_ptr<tf::TransformListener> tf, LocalVisualizationPtr visual) {    //这边传入的是init函数初始化的三个对象  代价地图指针 坐标转换指针 可视化指针？（这个可视化确实让人很懵逼
 
-  if (!is_initialized_) {
-    oscillation_ = std::chrono::system_clock::now();
+  if (!is_initialized_) {   //如果没有被初始化完成  声明时默认是false （也就是说在开始规划之前这一步是必须的 光是init函数还不够 可能是处于运行速度上的考虑？
+    oscillation_ = std::chrono::system_clock::now();    //打个时间戳
     tf_ = tf;
     local_cost_ = local_cost;
 
     std::string full_path = ros::package::getPath("roborts_planning") + \
-      "/local_planner/timed_elastic_band/config/timed_elastic_band.prototxt";
-    roborts_common::ReadProtoFromTextFile(full_path.c_str(), &param_config_);
-    if (&param_config_ == nullptr) {
+      "/local_planner/timed_elastic_band/config/timed_elastic_band.prototxt";   //同样是用字符串保存完整路径
+    roborts_common::ReadProtoFromTextFile(full_path.c_str(), &param_config_);   //以只读模式加载并且存储到param_config_指向的内存中（这里加载的是配置文件。。   两个节点的代码结构也差别太大了吧 除了基于ros的部分
+    if (&param_config_ == nullptr) {    //异常捕获 如果加载失败 就报错抛出
       ROS_ERROR("error occur when loading config file");
       roborts_common::ErrorInfo read_file_error(roborts_common::ErrorCode::LP_ALGORITHM_INITILIZATION_ERROR,
                                               "load algorithm param file failed");
@@ -573,9 +573,9 @@ roborts_common::ErrorInfo TebLocalPlanner::Initialize (std::shared_ptr<roborts_c
       ROS_ERROR("%s", read_file_error.error_msg().c_str());
       return read_file_error;
     }
-
-    max_vel_x_          = param_config_.kinematics_opt().max_vel_x();
-    max_vel_y_          = param_config_.kinematics_opt().max_vel_y();
+//这一堆初始化的参数居然没给注释也没给文档？ 这一段先放一放 看起来官方好像是有给文档？
+    max_vel_x_          = param_config_.kinematics_opt().max_vel_x();   //x方向上的最大？
+    max_vel_y_          = param_config_.kinematics_opt().max_vel_y();   //y方向上的最大？
     max_vel_theta_      = param_config_.kinematics_opt().max_vel_theta();
     max_vel_x_backwards = param_config_.kinematics_opt().max_vel_x_backwards();
     free_goal_vel_      = param_config_.tolerance_opt().free_goal_vel();
@@ -618,8 +618,8 @@ roborts_common::ErrorInfo TebLocalPlanner::Initialize (std::shared_ptr<roborts_c
                                                    robot_circumscribed_radius);
     odom_info_.SetTopic(param_config_.opt_frame().odom_frame());
 
-    is_initialized_ = true;
-    ROS_INFO("local algorithm initialize ok");
+    is_initialized_ = true;   //如果初始化完成 就把标志位置为真
+    ROS_INFO("local algorithm initialize ok");  //终端消息
     return roborts_common::ErrorInfo(roborts_common::ErrorCode::OK);
   }
 

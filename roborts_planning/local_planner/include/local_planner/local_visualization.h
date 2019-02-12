@@ -64,9 +64,9 @@ class LocalVisualization {
  protected:
 
   //! trajectory publisher
-  ros::Publisher local_planner_;
+  ros::Publisher local_planner_;    //轨迹发布器
   //! trajectory pose publisher
-  ros::Publisher pose_pub_;
+  ros::Publisher pose_pub_;         //轨迹姿态发布器？（也许是用来标记到达轨迹上的某个点
 
   //! visualize frame
   std::string visual_frame_ = "map";
